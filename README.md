@@ -1,6 +1,6 @@
 # PvH Calendar Generator
 
-Automated tool to fetch school calendars from Prinz-von-Homburg-Schule, filter relevant dates, and generate clean, printable PDFs.
+Automated tool to fetch school calendars from [Prinz-von-Homburg-Schule](https://www.homburgschule.de), filter relevant dates, and generate clean, printable PDFs.
 
 ## Features
 
