@@ -51,7 +51,7 @@ function extract_events {
 
         if (dtend == dtstart) dtend = ""
 
-        print prefix, summary, dtstart, dtend
+        print prefix, summary, dtstart
     }
     '
 }
