@@ -26,7 +26,7 @@ calendar.md: calendar.tsv
 	echo "# PvH Kalendar" > $@
 	echo "" >> $@
 	echo "| Kategorie | Ereignis | Start | " >> $@
-	echo "|:---|:---|:---|:---|" >> $@
+	echo "|:---|:---|:---|" >> $@
 	sed 's/|/\\|/g' $< | sed 's/\t/ | /g' | sed 's/^/| /' | sed 's/$$/ |/' >> $@
 
 calendar.pdf: calendar.md
