@@ -1,6 +1,5 @@
-all: allgemein.filtered.tsv grundschule.filtered.tsv sek1.filtered.tsv sek2.filtered.tsv
-	cat $^ > calendar.tsv
-	rm $^
+.PHONY: all clean
+all: calendar.pdf
 
 allgemein.cal:
 	curl -sSL -o $@ 'https://www.homburgschule.de/index.php?option=com_jevents&task=icals.export&format=ical&catids=24&years=0&k=8827ceb1220550b0acbd3455be0873b4'
@@ -16,15 +15,17 @@ sek2.cal:
 
 %.tsv: %.cal
 	./cal2csv.sh --prefix $* $< > $@
-	rm $<
 
 %.filtered.tsv: %.tsv
 	gsed -E '/(202[0-4]|2025-0[1-6])/d' $< > $@
 
+calendar.tsv: allgemein.filtered.tsv grundschule.filtered.tsv sek1.filtered.tsv sek2.filtered.tsv
+	cat $^ > $@
+
 calendar.md: calendar.tsv
 	echo "# PvH Kalendar" > $@
 	echo "" >> $@
-	echo "| Kategorie | Ereignis | Start | Ende |" >> $@
+	echo "| Kategorie | Ereignis | Start | " >> $@
 	echo "|:---|:---|:---|:---|" >> $@
 	sed 's/|/\\|/g' $< | sed 's/\t/ | /g' | sed 's/^/| /' | sed 's/$$/ |/' >> $@
 
