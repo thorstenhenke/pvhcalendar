@@ -7,12 +7,12 @@ PROGRAM=${0##*/}
 
 function display_help {
     cat <<-EOH
-	usage: $PROGRAM [OPTIONS] <calendar.ics>
+    usage: $PROGRAM <calendar.ics>
 
-	Extract events from iCalendar file as TSV (Summary, Start, End)
+    Extract events from iCalendar file as TSV (Date, Summary)
 
-	OPTIONS:
-	    -h, --help    Show this help
+    OPTIONS:
+        -h, --help    Show this help
 EOH
 }
 
@@ -23,7 +23,7 @@ function err_exit {
 }
 
 function extract_events {
-    awk -v prefix="$1" '
+    awk '
     BEGIN {
         RS = "BEGIN:VEVENT"
         FS = "\n"
@@ -32,54 +32,54 @@ function extract_events {
     function extract(line) {
         sub(/^[^:]*:/, "", line)
         gsub(/\r/, "", line)
+        # Escape existing tabs to avoid breaking TSV structure
+        gsub(/\t/, " ", line)
         return line
     }
     function format_date(val) {
-        val = substr(val, 1, 8)
-        return substr(val, 1, 4) "-" substr(val, 5, 2) "-" substr(val, 7, 2)
+        # Check if we have at least 8 characters (YYYYMMDD)
+        if (length(val) < 8) return val
+        
+        # Extract parts
+        y = substr(val, 1, 4)
+        m = substr(val, 5, 2)
+        d = substr(val, 7, 2)
+        
+        # Return format dd.mm.YYYY
+        # return d "." m "." y
+        return y "-" m "-" d
     }
     NR > 1 {
         summary = ""
         dtstart = ""
-        dtend = ""
 
         for (i = 1; i <= NF; i++) {
             if ($i ~ /^SUMMARY/)  summary = extract($i)
             if ($i ~ /^DTSTART/)  dtstart = format_date(extract($i))
-            if ($i ~ /^DTEND/)    dtend = format_date(extract($i))
         }
 
-        if (dtend == dtstart) dtend = ""
-
-        print prefix, summary, dtstart
+        # Only print if we found a summary and a date
+        if (summary != "" && dtstart != "") {
+            # Print Date first, then Summary
+            print dtstart, summary
+        }
     }
     '
 }
 
-PREFIX=""
-# Parse arguments
-while [[ $# -gt 0 ]]; do
-    case "$1" in
-        -h|--help) 
-            display_help; exit 0 
-            ;;
-        -p|--prefix) 
-            [[ -z "$2" || "$2" == -* ]] && err_exit "Option $1 requires an argument"
-            PREFIX="$2"
-            shift 2
-            ;;
-        -*) 
-            err_exit "Unknown option: $1" 
-            ;;
-        *) break ;;
-    esac
-done
+# Check for help argument
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+    display_help
+    exit 0
+fi
 
 [[ $# -lt 1 ]] && err_exit "Missing input file"
 [[ -f "$1" ]] || err_exit "File not found: $1"
 
+# Handle potential CRLF line endings from curl
 if head -1 "$1" | grep -q $'\r'; then 
-    tr -d '\r' < "$1" | extract_events "$PREFIX"
+    tr -d '\r' < "$1" | extract_events
 else 
-    extract_events "$PREFIX" < "$1"
-fi | sort -t$'\t' -k2
+    extract_events < "$1"
+fi | sort -t$'\t' -k1.7,1.10 -k1.4,1.5 -k1.1,1.2
+# Note: The sort command above sorts by Year (chars 7-10), then Month (4-5), then Day (1-2)

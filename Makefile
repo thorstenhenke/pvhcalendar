@@ -1,6 +1,13 @@
-.PHONY: all clean
-all: calendar.pdf
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Linux)
+    SED := sed
+else
+    SED := gsed
+endif
 
+all: allgemein.pdf grundschule.pdf sek1.pdf sek2.pdf
+
+# -- DOWNLOAD --
 allgemein.cal:
 	curl -sSL -o $@ 'https://www.homburgschule.de/index.php?option=com_jevents&task=icals.export&format=ical&catids=24&years=0&k=8827ceb1220550b0acbd3455be0873b4'
 
@@ -13,23 +20,26 @@ sek1.cal:
 sek2.cal:
 	curl -sSL -o $@ 'https://www.homburgschule.de/index.php?option=com_jevents&task=icals.export&format=ical&catids=28&years=0&k=8867056f9624ab16903bbc8a06caa65d'
 
+# -- CONVERTION --
 %.tsv: %.cal
-	./cal2csv.sh --prefix $* $< > $@
+	./cal2csv.sh $< > $@
 
+# -- FILTER RULES --
 %.filtered.tsv: %.tsv
-	gsed -E '/(202[0-4]|2025-0[1-6])/d' $< > $@
+	$(SED) -E '/(202[0-4]|2025-0[1-6])/d' $< > $@
 
-calendar.tsv: allgemein.filtered.tsv grundschule.filtered.tsv sek1.filtered.tsv sek2.filtered.tsv
-	cat $^ > $@
 
-calendar.md: calendar.tsv
-	echo "# PvH Kalendar" > $@
-	echo "" >> $@
-	echo "| Kategorie | Ereignis | Start | " >> $@
-	echo "|:---|:---|:---|" >> $@
-	sed 's/|/\\|/g' $< | sed 's/\t/ | /g' | sed 's/^/| /' | sed 's/$$/ |/' >> $@
+# -- MARKDOWN GENERATION --
+%.md: %.filtered.tsv
+	@echo "Creating Markdown for $*..."
+	@echo "# $* Kalender" > $@
+	@echo "" >> $@
+	@echo "| Datum | Ereignis |" >> $@
+	@echo "|:---|:---|" >> $@
+	@$(SED) 's/|/\\|/g' $< | $(SED) 's/\t/ | /g' | $(SED) 's/^/| /' | $(SED) 's/$$/ |/' >> $@
 
-calendar.pdf: calendar.md
+# -- PDF GENERATION --
+%.pdf: %.md
 	pandoc $< -o $@ \
 		--pdf-engine=pdflatex \
 		-V geometry:a4paper \
